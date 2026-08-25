@@ -1,0 +1,16 @@
+package com.cloudops.manager.operations.incident.model;
+
+public enum IncidentType {
+    AWS_ACCESS_DENIED,
+    AWS_THROTTLED,
+    AWS_TIMEOUT,
+    AWS_UNAVAILABLE,
+    PARTIAL_EVIDENCE,
+    DISCOVERY_DEGRADED,
+    TOPOLOGY_DEGRADED,
+    SECURITY_ANALYSIS_DEGRADED,
+    COMPLIANCE_DEGRADED,
+    FORENSICS_DEGRADED,
+    DEPLOYMENT_BLOCKED,
+    SYSTEM_DEGRADED
+}

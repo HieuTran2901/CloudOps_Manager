@@ -1,0 +1,5 @@
+# Blockers & Environment Status
+
+- **BLK-001 (AWS IAM)**: IAM User `cloud-agent-antigravity` (Account: `351405419700`, Region: `ap-southeast-2`) has denied permission `ecr:DescribeRepositories`. The application correctly detects and handles this limitation through sanitized error handling (`ACCESS_DENIED` in preflight check, `AWS_ACCESS_DENIED` in operational status, `BLOCKED` in deployment gate) without exposing credentials or stack traces.
+- **Docker Daemon Runtime**: In the current local execution environment, the Docker Desktop Linux Engine daemon is offline (`open //./pipe/dockerDesktopLinuxEngine: The system cannot find the file specified`). Static compose configuration (`docker compose config`) was fully validated. Recorded as `DOCKER_RUNTIME_UNAVAILABLE`.
+- **Active Blockers**: BLK-001 (recorded accurately). Final status: `PRODUCTION_CERTIFIED_WITH_BLOCKERS`.

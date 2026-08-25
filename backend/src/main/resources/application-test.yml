@@ -1,0 +1,12 @@
+server:
+  port: 8080
+
+cloudops:
+  aws:
+    region: us-east-1
+    role-arn: ""
+
+logging:
+  level:
+    root: INFO
+    com.cloudops.manager: DEBUG

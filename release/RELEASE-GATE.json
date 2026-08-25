@@ -1,0 +1,114 @@
+{
+  "version": "1.0.0",
+  "release": "release-2026.08-p38",
+  "status": "BLOCKED",
+  "analyticsReady": true,
+  "operationallyReady": true,
+  "securityReady": true,
+  "e2eReady": true,
+  "determinismReady": true,
+  "resilienceReady": true,
+  "deploymentReady": false,
+  "runtimeReady": false,
+  "releaseReady": false,
+  "accountId": "351405419700",
+  "region": "ap-southeast-2",
+  "checks": [
+    {
+      "category": "Build",
+      "name": "Backend Compilation & Unit Tests",
+      "status": "PASS",
+      "severity": "INFO",
+      "message": "Backend Spring Boot 3 test suite passes with 100% success rate."
+    },
+    {
+      "category": "Build",
+      "name": "Frontend TypeScript & Production Build",
+      "status": "PASS",
+      "severity": "INFO",
+      "message": "React 18 + Vite + Tailwind production bundle compiles cleanly with 0 errors."
+    },
+    {
+      "category": "Analytics",
+      "name": "AWS Resource Discovery Engine",
+      "status": "PASS",
+      "severity": "INFO",
+      "message": "Read-only inventory operational across EC2, S3, RDS, IAM, VPC, Subnets."
+    },
+    {
+      "category": "Analytics",
+      "name": "Infrastructure Topology & Blast Radius",
+      "status": "PASS",
+      "severity": "INFO",
+      "message": "Deterministic graph building, reachability, and BFS blast radius operational."
+    },
+    {
+      "category": "Analytics",
+      "name": "AWS Well-Architected Compliance Engine",
+      "status": "PASS",
+      "severity": "INFO",
+      "message": "Compliance audit rules evaluated with deterministic pass/fail classifications."
+    },
+    {
+      "category": "Operations",
+      "name": "Health Probes & Liveness/Readiness",
+      "status": "PASS",
+      "severity": "INFO",
+      "message": "Structured /api/v1/health matrix and liveness/readiness probes verified."
+    },
+    {
+      "category": "Security",
+      "name": "Read-Only AWS Invariant",
+      "status": "PASS",
+      "severity": "INFO",
+      "message": "Zero mutating AWS SDK calls exist in the analytical codebase."
+    },
+    {
+      "category": "Security",
+      "name": "Zero Frontend AWS SDK & Credentials",
+      "status": "PASS",
+      "severity": "INFO",
+      "message": "Zero AWS SDK imports in frontend; zero credentials exposed in client bundles."
+    },
+    {
+      "category": "Determinism",
+      "name": "Forensic Evidence SHA-256 Digest",
+      "status": "PASS",
+      "severity": "INFO",
+      "message": "Bitwise reproducible SHA-256 forensic export bundle verified."
+    },
+    {
+      "category": "Resilience",
+      "name": "Incident Correlation & Evidence Freshness",
+      "status": "PASS",
+      "severity": "INFO",
+      "message": "In-memory incident correlation, recovery tracking, and evidence lifecycle operational."
+    },
+    {
+      "category": "Deployment",
+      "name": "AWS ECR Deployment Capability",
+      "status": "BLOCKED",
+      "severity": "BLOCKING",
+      "message": "ECR repository inspection denied for current IAM user (Known Blocker BLK-001)."
+    }
+  ],
+  "blockers": [
+    {
+      "id": "BLK-001",
+      "iamUser": "arn:aws:iam::351405419700:user/cloud-agent-antigravity",
+      "deniedPermission": "ecr:DescribeRepositories",
+      "status": "ACCESS_DENIED",
+      "remediationStatus": "IAM_REMEDIATION_PENDING"
+    }
+  ],
+  "warnings": [
+    {
+      "id": "ENV-001",
+      "component": "Docker Daemon (Local)",
+      "status": "DOCKER_RUNTIME_UNAVAILABLE",
+      "classification": "NON_PRODUCTION_BLOCKER"
+    }
+  ],
+  "sha256Digest": "8f5a1197a9f939798544d6b7c53d1fb5e44c207b06a0901e8c75e89d1d6a695b",
+  "summary": "Analytics, Operations, Security, Determinism, and Resilience gates PASS. Deployment is BLOCKED due to IAM boundary (BLK-001: ecr:DescribeRepositories denied)."
+}

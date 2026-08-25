@@ -1,0 +1,47 @@
+{
+  "version": "1.0.0",
+  "release": "release-2026.08-p38",
+  "target": "AWS ECS Fargate",
+  "status": "BLOCKED",
+  "accountId": "351405419700",
+  "primaryRegion": "ap-southeast-2",
+  "pipelineWorkflow": ".github/workflows/production-deployment.yml",
+  "pipelineStatus": "CI_PIPELINE_DESIGNED: VERIFIED, CI_PIPELINE_EXECUTED: NOT_EXECUTED",
+  "buildStrategy": "Remote CI/CD (GitHub Actions / AWS CodeBuild)",
+  "localDockerStatus": "DOCKER_RUNTIME_UNAVAILABLE (NON_PRODUCTION_BLOCKER)",
+  "containers": [
+    {
+      "name": "cloudops-backend",
+      "image": "351405419700.dkr.ecr.ap-southeast-2.amazonaws.com/cloudops-manager-backend:1.0.0",
+      "tag": "1.0.0",
+      "baseImage": "eclipse-temurin:21-jre-jammy",
+      "nonRootUser": "cloudops (UID 10001)",
+      "port": 8080,
+      "healthCheckUrl": "http://localhost:8080/api/v1/health"
+    },
+    {
+      "name": "cloudops-frontend",
+      "image": "351405419700.dkr.ecr.ap-southeast-2.amazonaws.com/cloudops-manager-frontend:1.0.0",
+      "tag": "1.0.0",
+      "baseImage": "nginx:1.27-alpine",
+      "nonRootUser": "nginx",
+      "port": 80,
+      "healthCheckUrl": "http://localhost:80/healthz"
+    }
+  ],
+  "iamRoles": {
+    "taskRole": "arn:aws:iam::351405419700:role/CloudOpsTaskRole",
+    "executionRole": "arn:aws:iam::351405419700:role/CloudOpsTaskExecutionRole",
+    "deploymentPrincipal": "arn:aws:iam::351405419700:role/CloudOpsDeployerRole"
+  },
+  "blockers": [
+    {
+      "id": "BLK-001",
+      "iamUser": "arn:aws:iam::351405419700:user/cloud-agent-antigravity",
+      "deniedPermission": "ecr:DescribeRepositories",
+      "status": "ACCESS_DENIED",
+      "remediationStatus": "IAM_REMEDIATION_PENDING"
+    }
+  ],
+  "sha256Digest": "8f5a1197a9f939798544d6b7c53d1fb5e44c207b06a0901e8c75e89d1d6a695b"
+}
