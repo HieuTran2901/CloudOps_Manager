@@ -14,13 +14,11 @@ permissions:
 env:
   AWS_REGION: ap-southeast-2
   AWS_ACCOUNT_ID: '351405419700'
-  ECR_BACKEND_REPO: cloudops-manager-backend
-  ECR_FRONTEND_REPO: cloudops-manager-frontend
-  ECS_CLUSTER: cloudops-production
+  ECR_BACKEND_REPO: cloudops/backend
+  ECR_FRONTEND_REPO: cloudops/frontend
+  ECS_CLUSTER: cloudops-prod
   ECS_BACKEND_SERVICE: cloudops-backend-service
   ECS_FRONTEND_SERVICE: cloudops-frontend-service
-  RELEASE_VERSION: '1.0.0'
-  RELEASE_TAG: 'release-2026.08-p38'
 
 jobs:
   # Stage 1-5: Build, Test & Static Security Verification
@@ -67,6 +65,8 @@ jobs:
     name: Build & Publish Container Images
     needs: verify-and-build
     runs-on: ubuntu-latest
+    outputs:
+      image-tag: ${{ steps.set-image-tag.outputs.image_tag }}
     steps:
       - name: 1. Checkout Repository
         uses: actions/checkout@v4
@@ -81,26 +81,31 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: 4. Build, Tag & Push Backend Image
+      - name: 4. Set Image Tag Output
+        id: set-image-tag
+        run: |
+          echo "image_tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+
+      - name: 5. Build, Tag & Push Backend Image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
           IMAGE_URI="$ECR_REGISTRY/$ECR_BACKEND_REPO"
-          docker build -t "$IMAGE_URI:$RELEASE_VERSION" -t "$IMAGE_URI:$RELEASE_TAG" backend/
-          docker push "$IMAGE_URI:$RELEASE_VERSION"
-          docker push "$IMAGE_URI:$RELEASE_TAG"
-          BACKEND_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE_URI:$RELEASE_VERSION")
+          docker build -t "$IMAGE_URI:$IMAGE_TAG" backend/
+          docker push "$IMAGE_URI:$IMAGE_TAG"
+          BACKEND_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE_URI:$IMAGE_TAG")
           echo "BACKEND_DIGEST=$BACKEND_DIGEST" >> $GITHUB_ENV
 
-      - name: 5. Build, Tag & Push Frontend Image
+      - name: 6. Build, Tag & Push Frontend Image
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
+          IMAGE_TAG: ${{ github.sha }}
         run: |
           IMAGE_URI="$ECR_REGISTRY/$ECR_FRONTEND_REPO"
-          docker build -t "$IMAGE_URI:$RELEASE_VERSION" -t "$IMAGE_URI:$RELEASE_TAG" frontend/
-          docker push "$IMAGE_URI:$RELEASE_VERSION"
-          docker push "$IMAGE_URI:$RELEASE_TAG"
-          FRONTEND_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE_URI:$RELEASE_VERSION")
+          docker build -t "$IMAGE_URI:$IMAGE_TAG" frontend/
+          docker push "$IMAGE_URI:$IMAGE_TAG"
+          FRONTEND_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE_URI:$IMAGE_TAG")
           echo "FRONTEND_DIGEST=$FRONTEND_DIGEST" >> $GITHUB_ENV
 
   # Stage 10-14: ECS Deployment, Health Verification & Release Gate
@@ -118,16 +123,27 @@ jobs:
           role-to-assume: arn:aws:iam::351405419700:role/CloudOpsDeployerRole
           aws-region: ap-southeast-2
 
-      - name: 3. Trigger ECS Service Deployment
-        run: |
-          aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_BACKEND_SERVICE --force-new-deployment --region $AWS_REGION
-          aws ecs update-service --cluster $ECS_CLUSTER --service $ECS_FRONTEND_SERVICE --force-new-deployment --region $AWS_REGION
+      - name: 3. Authenticate Docker to Amazon ECR
+        id: login-ecr
+        uses: aws-actions/amazon-ecr-login@v2
 
-      - name: 4. Wait for ECS Services Stable Rollout
-        run: |
-          aws ecs wait services-stable --cluster $ECS_CLUSTER --services $ECS_BACKEND_SERVICE $ECS_FRONTEND_SERVICE --region $AWS_REGION
+      - name: 4. Render ECS Task Definition for Backend
+        id: render-backend-task-def
+        uses: aws-actions/amazon-ecs-render-task-definition@v1
+        with:
+          task-definition: infrastructure/ecs/cloudops-backend-task.json
+          container-name: cloudops-backend
+          image: ${{ steps.login-ecr.outputs.registry }}/cloudops/backend:${{ needs.container-publish.outputs.image-tag }}
 
-      - name: 5. Execute Production Smoke Test & Live Acceptance
+      - name: 5. Deploy ECS Task Definition to Backend Service
+        uses: aws-actions/amazon-ecs-deploy-task-definition@v2
+        with:
+          task-definition: ${{ steps.render-backend-task-def.outputs.task-definition }}
+          service: ${{ env.ECS_BACKEND_SERVICE }}
+          cluster: ${{ env.ECS_CLUSTER }}
+          wait-for-service-stability: true
+
+      - name: 6. Execute Production Smoke Test & Live Acceptance
         run: |
           chmod +x scripts/production-smoke-test.sh
           ./scripts/production-smoke-test.sh

@@ -1,0 +1,67 @@
+{
+  "family": "cloudops-backend",
+  "networkMode": "awsvpc",
+  "requiresCompatibilities": [
+    "FARGATE"
+  ],
+  "cpu": "512",
+  "memory": "1024",
+  "executionRoleArn": "arn:aws:iam::351405419700:role/CloudOpsECSTaskExecutionRole",
+  "taskRoleArn": "arn:aws:iam::351405419700:role/CloudOpsECSTaskRole",
+  "containerDefinitions": [
+    {
+      "name": "cloudops-backend",
+      "image": "IMAGE_URI_PLACEHOLDER",
+      "essential": true,
+      "portMappings": [
+        {
+          "containerPort": 8080,
+          "hostPort": 8080,
+          "protocol": "tcp"
+        }
+      ],
+      "environment": [
+        {
+          "name": "SERVER_PORT",
+          "value": "8080"
+        },
+        {
+          "name": "AWS_REGION",
+          "value": "ap-southeast-2"
+        },
+        {
+          "name": "REDIS_HOST",
+          "value": "master.cloudops-prod-redis.xg0cin.apse2.cache.amazonaws.com"
+        },
+        {
+          "name": "REDIS_PORT",
+          "value": "6379"
+        }
+      ],
+      "secrets": [
+        {
+          "name": "REDIS_AUTH_TOKEN",
+          "valueFrom": "arn:aws:secretsmanager:ap-southeast-2:351405419700:secret:cloudops/prod/redis/credentials-h9JPnE"
+        }
+      ],
+      "logConfiguration": {
+        "logDriver": "awslogs",
+        "options": {
+          "awslogs-group": "/ecs/cloudops/backend",
+          "awslogs-region": "ap-southeast-2",
+          "awslogs-stream-prefix": "backend"
+        }
+      },
+      "healthCheck": {
+        "command": [
+          "CMD-SHELL",
+          "wget --no-verbose --tries=1 --spider http://localhost:8080/api/v1/health || exit 1"
+        ],
+        "interval": 30,
+        "timeout": 5,
+        "retries": 3,
+        "startPeriod": 20
+      }
+    }
+  ]
+}
