@@ -36,11 +36,15 @@
         {
           "name": "REDIS_PORT",
           "value": "6379"
+        },
+        {
+          "name": "REDIS_SSL",
+          "value": "true"
         }
       ],
       "secrets": [
         {
-          "name": "REDIS_AUTH_TOKEN",
+          "name": "REDIS_PASSWORD",
           "valueFrom": "arn:aws:secretsmanager:ap-southeast-2:351405419700:secret:cloudops/prod/redis/credentials-h9JPnE"
         }
       ],
