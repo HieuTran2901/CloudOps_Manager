@@ -1,0 +1,87 @@
+name: OIDC STS Direct Diagnostic
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  diagnose-oidc:
+    name: Direct OIDC & STS Isolation Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: 1. Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 2. Obtain GitHub OIDC Token & Inspect Claims
+        id: oidc-token
+        run: |
+          set -e
+          echo "=== 1. Requesting OIDC token with audience sts.amazonaws.com ==="
+          
+          # Request token using GitHub Actions runtime variables
+          TOKEN_RESPONSE=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com")
+          
+          TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.value')
+          
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "ERROR: Failed to obtain OIDC token from GitHub token service"
+            exit 1
+          fi
+          
+          echo "OIDC token obtained successfully."
+          
+          echo "=== 2. Inspecting non-sensitive payload claims ==="
+          PAYLOAD_B64=$(echo "$TOKEN" | cut -d'.' -f2)
+          # Base64url to base64 decode with proper padding
+          PAYLOAD_JSON=$(echo "$PAYLOAD_B64" | tr '_-' '/+' | base64 -d 2>/dev/null || echo "$PAYLOAD_B64" | tr '_-' '/+' | awk '{while (length()%4) append="="; print $0 append}' | base64 -d)
+          
+          echo "iss: $(echo "$PAYLOAD_JSON" | jq -r '.iss // "N/A"')"
+          echo "aud: $(echo "$PAYLOAD_JSON" | jq -r '.aud // "N/A"')"
+          echo "sub: $(echo "$PAYLOAD_JSON" | jq -r '.sub // "N/A"')"
+          echo "repository: $(echo "$PAYLOAD_JSON" | jq -r '.repository // "N/A"')"
+          echo "repository_owner: $(echo "$PAYLOAD_JSON" | jq -r '.repository_owner // "N/A"')"
+          echo "repository_id: $(echo "$PAYLOAD_JSON" | jq -r '.repository_id // "N/A"')"
+          echo "repository_owner_id: $(echo "$PAYLOAD_JSON" | jq -r '.repository_owner_id // "N/A"')"
+          echo "ref: $(echo "$PAYLOAD_JSON" | jq -r '.ref // "N/A"')"
+          echo "ref_type: $(echo "$PAYLOAD_JSON" | jq -r '.ref_type // "N/A"')"
+          echo "event_name: $(echo "$PAYLOAD_JSON" | jq -r '.event_name // "N/A"')"
+          
+          # Save token to file securely for next step
+          echo -n "$TOKEN" > /tmp/web_identity_token
+          chmod 600 /tmp/web_identity_token
+
+      - name: 3. Direct AWS STS AssumeRoleWithWebIdentity (Regional ap-southeast-2)
+        run: |
+          set +e
+          echo "=== Calling aws sts assume-role-with-web-identity (ap-southeast-2) ==="
+          
+          TOKEN=$(cat /tmp/web_identity_token)
+          
+          STS_OUT=$(aws sts assume-role-with-web-identity \
+            --role-arn "arn:aws:iam::351405419700:role/CloudOpsDeployerRole" \
+            --role-session-name "github-oidc-diagnostic" \
+            --web-identity-token "$TOKEN" \
+            --region "ap-southeast-2" \
+            --output json 2>&1)
+          
+          STS_STATUS=$?
+          
+          # Clean up token
+          rm -f /tmp/web_identity_token
+          
+          if [ $STS_STATUS -eq 0 ]; then
+            echo "STS AssumeRoleWithWebIdentity Result: SUCCESS"
+            # Extract caller identity metadata safely without credentials
+            ASSUMED_ARN=$(echo "$STS_OUT" | jq -r '.AssumedRoleUser.Arn // "N/A"')
+            ASSUMED_ID=$(echo "$STS_OUT" | jq -r '.AssumedRoleUser.AssumedRoleId // "N/A"')
+            echo "Assumed Role User ARN: $ASSUMED_ARN"
+            echo "Assumed Role ID: $ASSUMED_ID"
+          else
+            echo "STS AssumeRoleWithWebIdentity Result: FAILED (Exit Code $STS_STATUS)"
+            echo "STS Output / Error:"
+            echo "$STS_OUT" | grep -E "(An error occurred|AccessDenied|InvalidIdentityToken|OpenIDConnect|error)" || echo "$STS_OUT"
+          fi
