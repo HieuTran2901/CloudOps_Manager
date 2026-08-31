@@ -39,6 +39,7 @@ jobs:
       - name: 3. Backend Compilation & Test Suite
         run: |
           cd backend
+          chmod +x mvnw
           ./mvnw clean test
 
       - name: 4. Set up Node.js 20
