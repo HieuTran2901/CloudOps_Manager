@@ -36,15 +36,37 @@ jobs:
           PAYLOAD_B64=$(echo "$TOKEN" | cut -d'.' -f2)
           PAYLOAD_JSON=$(echo "$PAYLOAD_B64" | tr '_-' '/+' | base64 -d 2>/dev/null || echo "$PAYLOAD_B64" | tr '_-' '/+' | awk '{while (length()%4) append="="; print $0 append}' | base64 -d)
           
-          echo "iss: $(echo "$PAYLOAD_JSON" | jq -r '.iss // "N/A"')"
-          echo "aud: $(echo "$PAYLOAD_JSON" | jq -r '.aud // "N/A"')"
-          echo "sub: $(echo "$PAYLOAD_JSON" | jq -r '.sub // "N/A"')"
-          echo "repository: $(echo "$PAYLOAD_JSON" | jq -r '.repository // "N/A"')"
-          echo "repository_owner: $(echo "$PAYLOAD_JSON" | jq -r '.repository_owner // "N/A"')"
-          echo "repository_id: $(echo "$PAYLOAD_JSON" | jq -r '.repository_id // "N/A"')"
-          echo "repository_owner_id: $(echo "$PAYLOAD_JSON" | jq -r '.repository_owner_id // "N/A"')"
-          echo "ref: $(echo "$PAYLOAD_JSON" | jq -r '.ref // "N/A"')"
-          echo "ref_type: $(echo "$PAYLOAD_JSON" | jq -r '.ref_type // "N/A"')"
+          ACTUAL_ISS=$(echo "$PAYLOAD_JSON" | jq -r '.iss // "N/A"')
+          ACTUAL_AUD=$(echo "$PAYLOAD_JSON" | jq -r '.aud // "N/A"')
+          ACTUAL_SUB=$(echo "$PAYLOAD_JSON" | jq -r '.sub // "N/A"')
+          ACTUAL_REPO=$(echo "$PAYLOAD_JSON" | jq -r '.repository // "N/A"')
+          ACTUAL_OWNER=$(echo "$PAYLOAD_JSON" | jq -r '.repository_owner // "N/A"')
+          ACTUAL_REPO_ID=$(echo "$PAYLOAD_JSON" | jq -r '.repository_id // "N/A"')
+          ACTUAL_OWNER_ID=$(echo "$PAYLOAD_JSON" | jq -r '.repository_owner_id // "N/A"')
+          ACTUAL_REF=$(echo "$PAYLOAD_JSON" | jq -r '.ref // "N/A"')
+          ACTUAL_REF_TYPE=$(echo "$PAYLOAD_JSON" | jq -r '.ref_type // "N/A"')
+          
+          echo "iss: $ACTUAL_ISS"
+          echo "aud: $ACTUAL_AUD"
+          echo "sub: $ACTUAL_SUB"
+          echo "repository: $ACTUAL_REPO"
+          echo "repository_owner: $ACTUAL_OWNER"
+          echo "repository_id: $ACTUAL_REPO_ID"
+          echo "repository_owner_id: $ACTUAL_OWNER_ID"
+          echo "ref: $ACTUAL_REF"
+          echo "ref_type: $ACTUAL_REF_TYPE"
+          
+          EXPECTED_SUB="repo:HieuTran2901/CloudOps_Manager:ref:refs/tags/release-2026.08-p45-fix1"
+          echo "=== 3. Subject Claim Match Pre-Verification ==="
+          echo "Target Diagnostic Sub: $EXPECTED_SUB"
+          echo "Actual Token Sub:      $ACTUAL_SUB"
+          
+          if [ "$ACTUAL_SUB" = "$EXPECTED_SUB" ]; then
+            echo "MATCH: OIDC token subject exactly matches the diagnostic IAM trust policy."
+          else
+            echo "MISMATCH: Token subject does not match expected release tag subject."
+            echo "NOTE: To run in the exact tag context, in the GitHub Actions UI select 'Use workflow from: Tags -> release-2026.08-p45-fix1'."
+          fi
           
           echo -n "$TOKEN" > /tmp/oidc_token
           chmod 600 /tmp/oidc_token
