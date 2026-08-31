@@ -75,7 +75,7 @@ jobs:
           ACTUAL_REF=$(echo "$CLAIMS_OUT" | grep "^ref=" | cut -d'=' -f2-)
           ACTUAL_REF_TYPE=$(echo "$CLAIMS_OUT" | grep "^ref_type=" | cut -d'=' -f2-)
           
-          EXPECTED_SUB="repo:HieuTran2901/CloudOps_Manager:ref:refs/tags/release-2026.08-p45-oidc1"
+          EXPECTED_SUB="repo:HieuTran2901@177116904/CloudOps_Manager@1346269623:ref:refs/tags/release-2026.08-p45-oidc1"
           EXPECTED_REF="refs/tags/release-2026.08-p45-oidc1"
           EXPECTED_REF_TYPE="tag"
           
