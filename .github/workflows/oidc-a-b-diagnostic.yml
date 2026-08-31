@@ -1,0 +1,95 @@
+name: OIDC A/B STS Isolation Diagnostic
+
+on:
+  workflow_dispatch:
+
+permissions:
+  id-token: write
+  contents: read
+
+jobs:
+  oidc-a-b-test:
+    name: OIDC A/B Diagnostic Test
+    runs-on: ubuntu-latest
+    steps:
+      - name: 1. Checkout Repository
+        uses: actions/checkout@v4
+
+      - name: 2. Obtain GitHub OIDC Token & Decode Claims
+        id: oidc-token
+        run: |
+          set -e
+          echo "=== 1. Requesting OIDC token with audience sts.amazonaws.com ==="
+          TOKEN_RESPONSE=$(curl -s -H "Authorization: bearer $ACTIONS_ID_TOKEN_REQUEST_TOKEN" \
+            "${ACTIONS_ID_TOKEN_REQUEST_URL}&audience=sts.amazonaws.com")
+          
+          TOKEN=$(echo "$TOKEN_RESPONSE" | jq -r '.value')
+          
+          if [ -z "$TOKEN" ] || [ "$TOKEN" = "null" ]; then
+            echo "ERROR: Failed to obtain OIDC token from GitHub token service"
+            exit 1
+          fi
+          
+          echo "OIDC token obtained successfully."
+          
+          echo "=== 2. Decoding non-sensitive payload claims ==="
+          PAYLOAD_B64=$(echo "$TOKEN" | cut -d'.' -f2)
+          PAYLOAD_JSON=$(echo "$PAYLOAD_B64" | tr '_-' '/+' | base64 -d 2>/dev/null || echo "$PAYLOAD_B64" | tr '_-' '/+' | awk '{while (length()%4) append="="; print $0 append}' | base64 -d)
+          
+          echo "iss: $(echo "$PAYLOAD_JSON" | jq -r '.iss // "N/A"')"
+          echo "aud: $(echo "$PAYLOAD_JSON" | jq -r '.aud // "N/A"')"
+          echo "sub: $(echo "$PAYLOAD_JSON" | jq -r '.sub // "N/A"')"
+          echo "repository: $(echo "$PAYLOAD_JSON" | jq -r '.repository // "N/A"')"
+          echo "repository_owner: $(echo "$PAYLOAD_JSON" | jq -r '.repository_owner // "N/A"')"
+          echo "repository_id: $(echo "$PAYLOAD_JSON" | jq -r '.repository_id // "N/A"')"
+          echo "repository_owner_id: $(echo "$PAYLOAD_JSON" | jq -r '.repository_owner_id // "N/A"')"
+          echo "ref: $(echo "$PAYLOAD_JSON" | jq -r '.ref // "N/A"')"
+          echo "ref_type: $(echo "$PAYLOAD_JSON" | jq -r '.ref_type // "N/A"')"
+          
+          echo -n "$TOKEN" > /tmp/oidc_token
+          chmod 600 /tmp/oidc_token
+
+      - name: 3. Test Production Role (CloudOpsDeployerRole)
+        run: |
+          set +e
+          echo "=== A. Testing CloudOpsDeployerRole ==="
+          TOKEN=$(cat /tmp/oidc_token)
+          
+          PROD_OUT=$(aws sts assume-role-with-web-identity \
+            --role-arn "arn:aws:iam::351405419700:role/CloudOpsDeployerRole" \
+            --role-session-name "diagnostic-prod-role" \
+            --web-identity-token "$TOKEN" \
+            --region "ap-southeast-2" \
+            --output json 2>&1)
+          
+          PROD_EXIT=$?
+          if [ $PROD_EXIT -eq 0 ]; then
+            echo "CloudOpsDeployerRole Result: SUCCESS"
+            echo "Assumed ARN: $(echo "$PROD_OUT" | jq -r '.AssumedRoleUser.Arn // "N/A"')"
+          else
+            echo "CloudOpsDeployerRole Result: FAILED (Exit Code $PROD_EXIT)"
+            echo "$PROD_OUT" | grep -E "(An error occurred|AccessDenied|InvalidIdentityToken|OpenIDConnect|error)" || echo "$PROD_OUT"
+          fi
+
+      - name: 4. Test Diagnostic Role (CloudOpsOIDCDiagnosticRole)
+        run: |
+          set +e
+          echo "=== B. Testing CloudOpsOIDCDiagnosticRole ==="
+          TOKEN=$(cat /tmp/oidc_token)
+          rm -f /tmp/oidc_token
+          
+          DIAG_OUT=$(aws sts assume-role-with-web-identity \
+            --role-arn "arn:aws:iam::351405419700:role/CloudOpsOIDCDiagnosticRole" \
+            --role-session-name "diagnostic-test-role" \
+            --web-identity-token "$TOKEN" \
+            --region "ap-southeast-2" \
+            --output json 2>&1)
+          
+          DIAG_EXIT=$?
+          if [ $DIAG_EXIT -eq 0 ]; then
+            echo "CloudOpsOIDCDiagnosticRole Result: SUCCESS"
+            echo "Assumed ARN: $(echo "$DIAG_OUT" | jq -r '.AssumedRoleUser.Arn // "N/A"')"
+          else
+            echo "CloudOpsOIDCDiagnosticRole Result: FAILED (Exit Code $DIAG_EXIT)"
+            echo "$DIAG_OUT" | grep -E "(An error occurred|AccessDenied|InvalidIdentityToken|OpenIDConnect|error)" || echo "$DIAG_OUT"
+          fi
