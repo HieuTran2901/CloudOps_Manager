@@ -6,6 +6,12 @@ on:
       - 'release-*'
       - 'v*'
   workflow_dispatch:
+    inputs:
+      artifact_tag:
+        description: 'Target immutable ECR image tag to deploy (defaults to git commit SHA)'
+        required: false
+        type: string
+        default: ''
 
 permissions:
   id-token: write
@@ -24,6 +30,7 @@ jobs:
   # Stage 1-5: Build, Test & Static Security Verification
   verify-and-build:
     name: Build & Verify Artifacts
+    if: github.event_name == 'workflow_dispatch' || !contains(github.ref_name, '-deploy')
     runs-on: ubuntu-latest
     steps:
       - name: 1. Checkout Repository
@@ -64,6 +71,7 @@ jobs:
   # Stage 6-9: Remote Container Image Build & ECR Publication
   container-publish:
     name: Build & Publish Container Images
+    if: github.event_name == 'workflow_dispatch' || !contains(github.ref_name, '-deploy')
     needs: verify-and-build
     runs-on: ubuntu-latest
     outputs:
@@ -86,16 +94,37 @@ jobs:
         id: login-ecr
         uses: aws-actions/amazon-ecr-login@v2
 
-      - name: 4. Set Image Tag Output
+      - name: 4. Resolve & Validate Target Image Tag
         id: set-image-tag
         run: |
-          echo "image_tag=${{ github.sha }}" >> $GITHUB_OUTPUT
+          set -euo pipefail
+
+          INPUT_TAG="${{ github.event.inputs.artifact_tag }}"
+          if [ -n "$INPUT_TAG" ]; then
+            RESOLVED_TAG="$INPUT_TAG"
+            IS_EXPLICIT="true"
+            echo "Artifact tag explicitly provided via workflow_dispatch: $RESOLVED_TAG"
+          else
+            RESOLVED_TAG="${{ github.sha }}"
+            IS_EXPLICIT="false"
+            echo "No explicit artifact tag provided. Defaulting to commit SHA: $RESOLVED_TAG"
+          fi
+
+          # Input Security: Validate tag syntax
+          if [[ ! "$RESOLVED_TAG" =~ ^[a-zA-Z0-9_.-]{1,128}$ ]]; then
+            echo "ERROR: Invalid artifact_tag syntax: '$RESOLVED_TAG'. Must match ^[a-zA-Z0-9_.-]{1,128}$."
+            exit 1
+          fi
+
+          echo "image_tag=$RESOLVED_TAG" >> $GITHUB_OUTPUT
+          echo "is_explicit_artifact=$IS_EXPLICIT" >> $GITHUB_OUTPUT
 
       - name: 5. Idempotent Build & Publish Backend Image
         id: publish-backend
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
+          IMAGE_TAG: ${{ steps.set-image-tag.outputs.image_tag }}
+          IS_EXPLICIT_ARTIFACT: ${{ steps.set-image-tag.outputs.is_explicit_artifact }}
         run: |
           set -euo pipefail
           IMAGE_URI="$ECR_REGISTRY/$ECR_BACKEND_REPO"
@@ -116,6 +145,12 @@ jobs:
             echo "MATCH: Image $ECR_BACKEND_REPO:$IMAGE_TAG already exists in ECR with immutable digest $BACKEND_DIGEST."
             echo "Reusing existing immutable image (skipping docker build & docker push)."
           elif echo "$DESCRIBE_OUT" | grep -q "ImageNotFoundException"; then
+            if [ "$IS_EXPLICIT_ARTIFACT" = "true" ]; then
+              echo "ERROR: Explicitly requested artifact_tag '$IMAGE_TAG' does not exist in ECR repository $ECR_BACKEND_REPO."
+              echo "Workflow dispatch with custom artifact_tag must reference an existing immutable artifact. Failing closed."
+              exit 1
+            fi
+
             echo "Image $ECR_BACKEND_REPO:$IMAGE_TAG does not exist in ECR. Building and publishing..."
             docker build -t "$IMAGE_URI:$IMAGE_TAG" backend/
             docker push "$IMAGE_URI:$IMAGE_TAG"
@@ -145,7 +180,8 @@ jobs:
         id: publish-frontend
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
-          IMAGE_TAG: ${{ github.sha }}
+          IMAGE_TAG: ${{ steps.set-image-tag.outputs.image_tag }}
+          IS_EXPLICIT_ARTIFACT: ${{ steps.set-image-tag.outputs.is_explicit_artifact }}
         run: |
           set -euo pipefail
           IMAGE_URI="$ECR_REGISTRY/$ECR_FRONTEND_REPO"
@@ -166,6 +202,12 @@ jobs:
             echo "MATCH: Image $ECR_FRONTEND_REPO:$IMAGE_TAG already exists in ECR with immutable digest $FRONTEND_DIGEST."
             echo "Reusing existing immutable image (skipping docker build & docker push)."
           elif echo "$DESCRIBE_OUT" | grep -q "ImageNotFoundException"; then
+            if [ "$IS_EXPLICIT_ARTIFACT" = "true" ]; then
+              echo "ERROR: Explicitly requested artifact_tag '$IMAGE_TAG' does not exist in ECR repository $ECR_FRONTEND_REPO."
+              echo "Workflow dispatch with custom artifact_tag must reference an existing immutable artifact. Failing closed."
+              exit 1
+            fi
+
             echo "Image $ECR_FRONTEND_REPO:$IMAGE_TAG does not exist in ECR. Building and publishing..."
             docker build -t "$IMAGE_URI:$IMAGE_TAG" frontend/
             docker push "$IMAGE_URI:$IMAGE_TAG"
@@ -194,6 +236,7 @@ jobs:
   # Stage 10-14: ECS Deployment, Health Verification & Release Gate
   ecs-deployment:
     name: ECS Fargate Rollout & Acceptance
+    if: github.event_name == 'workflow_dispatch' || !contains(github.ref_name, '-deploy')
     needs: container-publish
     runs-on: ubuntu-latest
     steps:
