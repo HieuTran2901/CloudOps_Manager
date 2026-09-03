@@ -14,6 +14,7 @@ import software.amazon.awssdk.services.ec2.Ec2Client;
 import software.amazon.awssdk.services.iam.IamClient;
 import software.amazon.awssdk.services.rds.RdsClient;
 import software.amazon.awssdk.services.s3.S3Client;
+import software.amazon.awssdk.services.servicequotas.ServiceQuotasClient;
 
 @Configuration
 public class AwsClientConfig {
@@ -81,6 +82,15 @@ public class AwsClientConfig {
     public CloudTrailClient cloudTrailClient() {
         log.info("Configuring AWS CloudTrail Client for region: {}", defaultRegion);
         return CloudTrailClient.builder()
+                .region(Region.of(defaultRegion))
+                .credentialsProvider(DefaultCredentialsProvider.create())
+                .build();
+    }
+
+    @Bean
+    public ServiceQuotasClient serviceQuotasClient() {
+        log.info("Configuring AWS Service Quotas Client for region: {}", defaultRegion);
+        return ServiceQuotasClient.builder()
                 .region(Region.of(defaultRegion))
                 .credentialsProvider(DefaultCredentialsProvider.create())
                 .build();

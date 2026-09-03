@@ -3,6 +3,15 @@ spring:
     name: cloudops-manager
   profiles:
     active: ${SPRING_PROFILES_ACTIVE:dev}
+  data:
+    redis:
+      host: ${REDIS_HOST:localhost}
+      port: ${REDIS_PORT:6379}
+      username: ${REDIS_USERNAME:}
+      password: ${REDIS_PASSWORD:}
+      timeout: ${REDIS_TIMEOUT:2000ms}
+      ssl:
+        enabled: ${REDIS_SSL:false}
 
 server:
   port: ${SERVER_PORT:8080}
@@ -16,6 +25,13 @@ cloudops:
   aws:
     region: ${AWS_REGION:us-east-1}
     role-arn: ${AWS_ROLE_ARN:}
+  dashboard:
+    cache:
+      type: ${DASHBOARD_CACHE_TYPE:memory}
+    snapshot:
+      fresh-ttl-seconds: ${DASHBOARD_FRESH_TTL:60}
+      stale-ttl-seconds: ${DASHBOARD_STALE_TTL:600}
+      refresh-lock-ttl-seconds: ${DASHBOARD_LOCK_TTL:120}
   logging:
     level: ${LOG_LEVEL:INFO}
 

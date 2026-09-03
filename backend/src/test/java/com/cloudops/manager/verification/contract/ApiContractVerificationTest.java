@@ -42,11 +42,17 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
+import com.cloudops.manager.aws.dashboard.controller.DashboardSnapshotController;
+import com.cloudops.manager.aws.dashboard.model.DashboardSnapshot;
+import com.cloudops.manager.aws.dashboard.model.DashboardSnapshotStatus;
+import com.cloudops.manager.aws.dashboard.service.DashboardSnapshotService;
+
 @WebMvcTest({
         HealthController.class,
         AwsResourceDiscoveryController.class,
         TopologyController.class,
-        SecurityAnalysisController.class
+        SecurityAnalysisController.class,
+        DashboardSnapshotController.class
 })
 @Import(GlobalExceptionHandler.class)
 @DisplayName("API Contract & Sensitive Field Verification")
@@ -69,6 +75,9 @@ class ApiContractVerificationTest {
 
     @MockBean
     private SecurityAnalysisService securityAnalysisService;
+
+    @MockBean
+    private DashboardSnapshotService dashboardSnapshotService;
 
     @Test
     @DisplayName("GET /api/v1/health conforms to health contract")
@@ -195,5 +204,30 @@ class ApiContractVerificationTest {
                 .andExpect(jsonPath("$.success").value(true))
                 .andExpect(jsonPath("$.data.status").value("REACHABLE"))
                 .andExpect(jsonPath("$.data.path.nodeIds").isArray());
+    }
+
+    @Test
+    @DisplayName("GET /api/v1/aws/dashboard/snapshot conforms to contract and rejects duplicated /aws prefix")
+    void testDashboardSnapshotRouteContract() throws Exception {
+        DashboardSnapshot mockSnapshot = new DashboardSnapshot(
+                "351405419700",
+                "ap-southeast-2",
+                DashboardSnapshotStatus.LIVE,
+                Instant.now(),
+                Instant.now(),
+                null, null, null, null
+        );
+        when(dashboardSnapshotService.getSnapshot("ap-southeast-2")).thenReturn(mockSnapshot);
+
+        // Canonical route must succeed 200 OK
+        mockMvc.perform(get("/api/v1/aws/dashboard/snapshot").param("region", "ap-southeast-2"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.success").value(true))
+                .andExpect(jsonPath("$.data.region").value("ap-southeast-2"));
+
+        // Duplicated prefix route /api/v1/aws/aws/dashboard/snapshot is unmapped and returns 500 error from GlobalExceptionHandler
+        mockMvc.perform(get("/api/v1/aws/aws/dashboard/snapshot").param("region", "ap-southeast-2"))
+                .andExpect(status().isInternalServerError())
+                .andExpect(jsonPath("$.success").value(false));
     }
 }

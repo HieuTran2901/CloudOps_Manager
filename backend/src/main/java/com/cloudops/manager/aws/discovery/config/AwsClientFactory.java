@@ -73,6 +73,48 @@ public class AwsClientFactory {
                 .build();
     }
 
+    public Ec2Client getEc2Client(String region) {
+        return Ec2Client.builder()
+                .region(Region.of(region))
+                .credentialsProvider(software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider.create())
+                .build();
+    }
+
+    public S3Client getS3Client(String region) {
+        return S3Client.builder()
+                .region(Region.of(region))
+                .credentialsProvider(software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider.create())
+                .build();
+    }
+
+    public RdsClient getRdsClient(String region) {
+        return RdsClient.builder()
+                .region(Region.of(region))
+                .credentialsProvider(software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider.create())
+                .build();
+    }
+
+    public CloudWatchClient getCloudWatchClient(String region) {
+        return CloudWatchClient.builder()
+                .region(Region.of(region))
+                .credentialsProvider(software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider.create())
+                .build();
+    }
+
+    public CloudTrailClient getCloudTrailClient(String region) {
+        return CloudTrailClient.builder()
+                .region(Region.of(region))
+                .credentialsProvider(software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider.create())
+                .build();
+    }
+
+    public software.amazon.awssdk.services.servicequotas.ServiceQuotasClient getServiceQuotasClient(String region) {
+        return software.amazon.awssdk.services.servicequotas.ServiceQuotasClient.builder()
+                .region(Region.of(region))
+                .credentialsProvider(software.amazon.awssdk.auth.credentials.DefaultCredentialsProvider.create())
+                .build();
+    }
+
     private StaticCredentialsProvider createCredentialsProvider(AssumedRoleSession session) {
         AwsSessionCredentials credentials = AwsSessionCredentials.create(
                 session.accessKeyId(),
