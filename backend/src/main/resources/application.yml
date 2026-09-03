@@ -21,7 +21,7 @@ cloudops:
   app:
     name: cloudops-manager
     version: "1.0.0"
-    release: "release-2026.08-p38"
+    release: ${CLOUDOPS_APP_RELEASE:release-2026.08-p53.1}
   aws:
     region: ${AWS_REGION:us-east-1}
     role-arn: ${AWS_ROLE_ARN:}

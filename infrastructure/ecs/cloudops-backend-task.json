@@ -40,6 +40,10 @@
         {
           "name": "REDIS_SSL",
           "value": "true"
+        },
+        {
+          "name": "CLOUDOPS_APP_RELEASE",
+          "value": "release-2026.08-p53.1"
         }
       ],
       "secrets": [
