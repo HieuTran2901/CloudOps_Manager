@@ -2,10 +2,18 @@ import React from 'react';
 import { Globe } from 'lucide-react';
 
 interface LiveConnectionBannerProps {
+  accountId?: string;
+  region?: string;
+  lastSync?: string;
   onViewConnection?: () => void;
 }
 
-export const LiveConnectionBanner: React.FC<LiveConnectionBannerProps> = ({ onViewConnection }) => {
+export const LiveConnectionBanner: React.FC<LiveConnectionBannerProps> = ({
+  accountId = '351405419700',
+  region = 'ap-southeast-2',
+  lastSync = 'Just now',
+  onViewConnection,
+}) => {
   return (
     <div className="relative rounded-2xl border border-slate-800/80 bg-gradient-to-r from-[#0d1527] via-[#0f1b33] to-[#0a1020] p-5 shadow-2xl overflow-hidden backdrop-blur-md">
       {/* Background ambient glow */}
@@ -34,7 +42,7 @@ export const LiveConnectionBanner: React.FC<LiveConnectionBannerProps> = ({ onVi
               </span>
             </div>
             <p className="text-xs text-slate-300/80">
-              All systems are online and collecting data in real-time.
+              Account <span className="font-mono text-slate-100 font-semibold">{accountId}</span> in <span className="font-mono text-sky-400 font-semibold">{region}</span>
             </p>
           </div>
         </div>
@@ -43,14 +51,14 @@ export const LiveConnectionBanner: React.FC<LiveConnectionBannerProps> = ({ onVi
         <div className="flex flex-wrap items-center gap-6 text-xs">
           <div>
             <span className="text-[11px] text-slate-400 block">Data Source</span>
-            <span className="font-medium text-slate-200 mt-0.5 block">AWS Evidence Service</span>
+            <span className="font-medium text-slate-200 mt-0.5 block font-mono">AWS SDK v2 API</span>
           </div>
 
           <div className="hidden sm:block w-px h-8 bg-slate-800" />
 
           <div>
             <span className="text-[11px] text-slate-400 block">Last Sync</span>
-            <span className="font-medium text-slate-200 mt-0.5 block font-mono">34s ago</span>
+            <span className="font-medium text-slate-200 mt-0.5 block font-mono">{lastSync}</span>
           </div>
 
           <button

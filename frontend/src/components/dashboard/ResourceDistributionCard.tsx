@@ -1,18 +1,36 @@
 import React, { useState } from 'react';
 import { Server, Database, Box, Cpu, Network, Key, Layers, MoreHorizontal } from 'lucide-react';
 
-export const ResourceDistributionCard: React.FC = () => {
+import { CloudResource } from '../../types/api';
+
+interface ResourceDistributionCardProps {
+  resources?: CloudResource[];
+}
+
+export const ResourceDistributionCard: React.FC<ResourceDistributionCardProps> = ({ resources = [] }) => {
   const [filter, setFilter] = useState('By Service');
 
+  // Compute dynamic counts from live CloudResource array
+  const ec2Count = resources.filter((r) => r.resourceType === 'EC2').length;
+  const s3Count = resources.filter((r) => r.resourceType === 'S3').length;
+  const rdsCount = resources.filter((r) => r.resourceType === 'RDS').length;
+  const vpcCount = resources.filter((r) => r.resourceType === 'VPC').length;
+  const sgCount = resources.filter((r) => r.resourceType === 'SECURITY_GROUP').length;
+  const iamCount = resources.filter((r) => r.resourceType === 'IAM_USER' || r.resourceType === 'IAM_ROLE').length;
+  const subnetCount = resources.filter((r) => r.resourceType === 'SUBNET').length;
+  const otherCount = resources.filter((r) => !['EC2', 'S3', 'RDS', 'VPC', 'SECURITY_GROUP', 'IAM_USER', 'IAM_ROLE', 'SUBNET'].includes(r.resourceType)).length;
+
+  const maxCount = Math.max(10, ec2Count, s3Count, rdsCount, vpcCount, sgCount, iamCount, subnetCount, otherCount);
+
   const services = [
-    { name: 'EC2', count: 780, max: 2000, color: 'from-orange-500 to-red-500', icon: Server, iconColor: 'text-orange-400 bg-orange-950/40 border-orange-500/30' },
-    { name: 'S3', count: 1240, max: 2000, color: 'from-emerald-500 to-teal-500', icon: Box, iconColor: 'text-emerald-400 bg-emerald-950/40 border-emerald-500/30' },
-    { name: 'RDS', count: 1850, max: 2000, color: 'from-blue-500 to-indigo-500', icon: Database, iconColor: 'text-blue-400 bg-blue-950/40 border-blue-500/30' },
-    { name: 'Lambda', count: 1420, max: 2000, color: 'from-amber-500 to-orange-500', icon: Cpu, iconColor: 'text-amber-400 bg-amber-950/40 border-amber-500/30' },
-    { name: 'VPC', count: 960, max: 2000, color: 'from-purple-500 to-pink-500', icon: Network, iconColor: 'text-purple-400 bg-purple-950/40 border-purple-500/30' },
-    { name: 'IAM', count: 1100, max: 2000, color: 'from-red-500 to-rose-600', icon: Key, iconColor: 'text-rose-400 bg-rose-950/40 border-rose-500/30' },
-    { name: 'DynamoDB', count: 890, max: 2000, color: 'from-cyan-500 to-blue-500', icon: Layers, iconColor: 'text-cyan-400 bg-cyan-950/40 border-cyan-500/30' },
-    { name: 'Others', count: 1500, max: 2000, color: 'from-indigo-500 to-purple-600', icon: MoreHorizontal, iconColor: 'text-indigo-400 bg-indigo-950/40 border-indigo-500/30' },
+    { name: 'EC2', count: ec2Count, max: maxCount, color: 'from-orange-500 to-red-500', icon: Server, iconColor: 'text-orange-400 bg-orange-950/40 border-orange-500/30' },
+    { name: 'S3', count: s3Count, max: maxCount, color: 'from-emerald-500 to-teal-500', icon: Box, iconColor: 'text-emerald-400 bg-emerald-950/40 border-emerald-500/30' },
+    { name: 'RDS', count: rdsCount, max: maxCount, color: 'from-blue-500 to-indigo-500', icon: Database, iconColor: 'text-blue-400 bg-blue-950/40 border-blue-500/30' },
+    { name: 'VPC', count: vpcCount, max: maxCount, color: 'from-purple-500 to-pink-500', icon: Network, iconColor: 'text-purple-400 bg-purple-950/40 border-purple-500/30' },
+    { name: 'SG', count: sgCount, max: maxCount, color: 'from-rose-500 to-pink-600', icon: Layers, iconColor: 'text-rose-400 bg-rose-950/40 border-rose-500/30' },
+    { name: 'Subnet', count: subnetCount, max: maxCount, color: 'from-amber-500 to-orange-500', icon: Cpu, iconColor: 'text-amber-400 bg-amber-950/40 border-amber-500/30' },
+    { name: 'IAM', count: iamCount, max: maxCount, color: 'from-red-500 to-rose-600', icon: Key, iconColor: 'text-rose-400 bg-rose-950/40 border-rose-500/30' },
+    { name: 'Others', count: otherCount, max: maxCount, color: 'from-indigo-500 to-purple-600', icon: MoreHorizontal, iconColor: 'text-indigo-400 bg-indigo-950/40 border-indigo-500/30' },
   ];
 
   return (

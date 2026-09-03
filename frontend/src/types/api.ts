@@ -239,6 +239,30 @@ export interface DetailedHealthResponse {
   timestamp: string;
 }
 
+export type DashboardSnapshotStatus = 'LIVE' | 'STALE' | 'INITIALIZING' | 'REFRESH_FAILED' | 'ERROR';
+export type SubsystemStatus = 'LIVE' | 'STALE' | 'EMPTY' | 'DENIED' | 'ERROR' | 'UNAVAILABLE';
+
+export interface SubsystemSnapshot<T> {
+  status: SubsystemStatus;
+  source: string;
+  data: T | null;
+  fetchedAt: string;
+  errorCode?: string | null;
+  errorMessage?: string | null;
+}
+
+export interface DashboardSnapshot {
+  accountId: string;
+  region: string;
+  snapshotStatus: DashboardSnapshotStatus;
+  generatedAt: string;
+  lastSuccessfulRefreshAt: string;
+  resources: SubsystemSnapshot<InventorySummary>;
+  topology: SubsystemSnapshot<TopologyGraph>;
+  compliance: SubsystemSnapshot<ComplianceReport>;
+  costs: SubsystemSnapshot<CostAggregationResult>;
+}
+
 export type AwsConnectivityStatus =
   | 'CONNECTED'
   | 'AWS_ACCESS_DENIED'
@@ -439,3 +463,119 @@ export interface VerificationScenarioResult {
   executedAt: string;
   isSimulated: boolean;
 }
+
+export type QuotaStatus = 'NORMAL' | 'WARNING' | 'CRITICAL' | 'UNKNOWN';
+
+export interface ServiceQuotaItem {
+  serviceCode: string;
+  serviceName: string;
+  quotaCode: string;
+  quotaName: string;
+  appliedLimit: number | null;
+  currentUsage: number | null;
+  utilizationPercentage: number | null;
+  status: QuotaStatus;
+  region: string;
+  usageSource: string;
+  unit: string;
+  adjustable: boolean;
+  evaluatedAt: string;
+}
+
+export interface QuotaUtilizationReport {
+  accountId: string;
+  region: string;
+  totalQuotasTracked: number;
+  normalCount: number;
+  warningCount: number;
+  criticalCount: number;
+  unknownCount: number;
+  highestUtilizationPercentage: number;
+  quotas: ServiceQuotaItem[];
+  statusSummary: Record<string, number>;
+  generatedAt: string;
+}
+
+export type RiskSeverity = 'LOW' | 'MEDIUM' | 'HIGH' | 'CRITICAL';
+export type RiskCategory = 'CAPACITY' | 'SECURITY' | 'RELIABILITY' | 'COMPLIANCE' | 'OPERATIONAL' | 'COST';
+export type RiskSource = 'QUOTA' | 'SECURITY' | 'COMPLIANCE' | 'DRIFT' | 'RESILIENCE';
+export type ActionSafety = 'READ_ONLY' | 'REQUIRES_APPROVAL' | 'HIGH_RISK';
+
+export interface RecommendedAction {
+  actionId: string;
+  title: string;
+  description: string;
+  safetyLevel: ActionSafety;
+  stepByStepGuide: string[];
+  verificationCheck: string;
+}
+
+export interface OperationalRisk {
+  riskId: string;
+  category: RiskCategory;
+  severity: RiskSeverity;
+  title: string;
+  description: string;
+  impact: string;
+  affectedResources: string[];
+  evidence: Record<string, unknown>;
+  detectedAt: string;
+  action: RecommendedAction;
+  sourceModule: RiskSource;
+}
+
+export interface RiskAssessmentReport {
+  accountId: string;
+  region: string;
+  totalRisksTracked: number;
+  criticalCount: number;
+  highCount: number;
+  mediumCount: number;
+  lowCount: number;
+  risks: OperationalRisk[];
+  generatedAt: string;
+}
+
+export type ImpactAnalysisStatus =
+  | 'SUCCESS'
+  | 'NOT_FOUND'
+  | 'AMBIGUOUS_RESOURCE'
+  | 'INVALID_REQUEST'
+  | 'ANALYSIS_LIMIT_REACHED'
+  | 'PARTIAL'
+  | 'UNSUPPORTED_RESOURCE_TYPE';
+
+export interface ImpactResourceSummary {
+  nodeId: string;
+  resourceType: string;
+  resourceId: string;
+  accountId: string;
+  region: string;
+  minimumDepth: number;
+  isDirect: boolean;
+  attributes: Record<string, unknown>;
+}
+
+export interface ImpactPath {
+  sourceNodeId: string;
+  targetNodeId: string;
+  relationshipType: string;
+  depth: number;
+}
+
+export interface ImpactAnalysisResult {
+  targetResource: ImpactResourceSummary | null;
+  accountId: string;
+  region: string;
+  maxDepth: number;
+  totalAffectedResources: number;
+  directAffectedCount: number;
+  indirectAffectedCount: number;
+  affectedTypeSummary: Record<string, number>;
+  upstreamDependencies: ImpactResourceSummary[];
+  downstreamDependents: ImpactResourceSummary[];
+  impactPaths: ImpactPath[];
+  status: ImpactAnalysisStatus;
+  warnings: string[];
+  evaluatedAt: string;
+}

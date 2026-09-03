@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { AppLayout } from '../components/layout/AppLayout';
 import { NavTab } from '../components/layout/Sidebar';
 import { ErrorBoundary } from '../components/feedback/ErrorBoundary';
+import { RegionProvider } from '../context/RegionContext';
 
 import { DashboardPage } from '../pages/DashboardPage';
 import { ResourcesPage } from '../pages/ResourcesPage';
@@ -37,9 +38,11 @@ export const App: React.FC = () => {
 
   return (
     <ErrorBoundary>
-      <AppLayout activeTab={activeTab} onTabChange={setActiveTab}>
-        {renderActivePage()}
-      </AppLayout>
+      <RegionProvider>
+        <AppLayout activeTab={activeTab} onTabChange={setActiveTab}>
+          {renderActivePage()}
+        </AppLayout>
+      </RegionProvider>
     </ErrorBoundary>
   );
 };

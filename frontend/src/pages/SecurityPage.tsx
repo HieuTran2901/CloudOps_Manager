@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { cloudOpsApi } from '../api';
 import { SecurityExposure } from '../types/api';
+import { useRegion } from '../context/RegionContext';
 import { LoadingSpinner } from '../components/feedback/LoadingSpinner';
 import { ErrorBanner } from '../components/feedback/ErrorBanner';
 import { StatusBadge } from '../components/ui/StatusBadge';
@@ -10,13 +11,16 @@ import { LateralMovementPanel } from '../components/security/LateralMovementPane
 import { ShieldAlert } from 'lucide-react';
 
 export const SecurityPage: React.FC = () => {
+  const { currentRegion } = useRegion();
   const [exposures, setExposures] = useState<SecurityExposure[]>([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
   useEffect(() => {
+    setLoading(true);
+    setError(null);
     cloudOpsApi
-      .getExposures()
+      .getExposures(currentRegion)
       .then((data) => {
         setExposures(data);
         setLoading(false);
@@ -25,7 +29,7 @@ export const SecurityPage: React.FC = () => {
         setError(err.message);
         setLoading(false);
       });
-  }, []);
+  }, [currentRegion]);
 
   return (
     <div className="space-y-6">

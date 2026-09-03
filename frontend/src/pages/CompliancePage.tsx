@@ -1,12 +1,14 @@
 import React, { useEffect, useState } from 'react';
 import { cloudOpsApi } from '../api';
 import { ComplianceReport } from '../types/api';
+import { useRegion } from '../context/RegionContext';
 import { LoadingSpinner } from '../components/feedback/LoadingSpinner';
 import { ErrorBanner } from '../components/feedback/ErrorBanner';
 import { StatusBadge } from '../components/ui/StatusBadge';
 import { Search, Filter } from 'lucide-react';
 
 export const CompliancePage: React.FC = () => {
+  const { currentRegion } = useRegion();
   const [report, setReport] = useState<ComplianceReport | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -14,8 +16,10 @@ export const CompliancePage: React.FC = () => {
   const [search, setSearch] = useState('');
 
   useEffect(() => {
+    setLoading(true);
+    setError(null);
     cloudOpsApi
-      .getComplianceReport()
+      .getComplianceReport(currentRegion)
       .then((data) => {
         setReport(data);
         setLoading(false);
@@ -24,7 +28,7 @@ export const CompliancePage: React.FC = () => {
         setError(err.message);
         setLoading(false);
       });
-  }, []);
+  }, [currentRegion]);
 
   const results = report?.results || [];
   const filteredResults = results.filter((r) => {

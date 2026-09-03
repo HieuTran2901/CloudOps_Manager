@@ -11,9 +11,9 @@ interface HeaderProps {
 export const Header: React.FC<HeaderProps> = ({
   currentRegion,
   onRegionChange,
-  accountId = 'Test Account',
+  accountId = '351405419700',
 }) => {
-  const regions = ['us-east-1', 'us-west-2', 'eu-west-1', 'ap-southeast-1'];
+  const regions = ['ap-southeast-2', 'us-east-1', 'us-west-2', 'eu-west-1', 'ap-southeast-1'];
 
   return (
     <header className="h-16 border-b border-slate-800/80 bg-[#090e1a]/90 backdrop-blur-md px-6 flex items-center justify-between sticky top-0 z-30">

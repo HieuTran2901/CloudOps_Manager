@@ -1,12 +1,13 @@
 import React, { useEffect, useState } from 'react';
 import { cloudOpsApi } from '../api';
 import { TopologyGraph, TopologyNode, TopologyEdge } from '../types/api';
+import { useRegion } from '../context/RegionContext';
 import { LoadingSpinner } from '../components/feedback/LoadingSpinner';
 import { ErrorBanner } from '../components/feedback/ErrorBanner';
 import { TopologyGraphView } from '../components/graph/TopologyGraphView';
-// icon imports cleaned
 
 export const TopologyPage: React.FC = () => {
+  const { currentRegion } = useRegion();
   const [graph, setGraph] = useState<TopologyGraph | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -14,8 +15,10 @@ export const TopologyPage: React.FC = () => {
   const [highlightedNeighbors, setHighlightedNeighbors] = useState<string[]>([]);
 
   useEffect(() => {
+    setLoading(true);
+    setError(null);
     cloudOpsApi
-      .getTopology()
+      .getTopology(currentRegion)
       .then((data) => {
         setGraph(data);
         setLoading(false);
@@ -24,7 +27,7 @@ export const TopologyPage: React.FC = () => {
         setError(err.message);
         setLoading(false);
       });
-  }, []);
+  }, [currentRegion]);
 
   const handleSelectNode = (node: TopologyNode) => {
     setSelectedNode(node);

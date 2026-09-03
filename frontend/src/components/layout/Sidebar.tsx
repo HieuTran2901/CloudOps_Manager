@@ -137,11 +137,11 @@ export const Sidebar: React.FC<SidebarProps> = ({ activeTab, onTabSelect }) => {
         <div className="flex items-center justify-between p-2.5 rounded-xl bg-slate-900/60 border border-slate-800">
           <div className="flex items-center space-x-2.5">
             <div className="w-8 h-8 rounded-full bg-blue-600 flex items-center justify-center text-white text-xs font-bold shadow-[0_0_10px_rgba(37,99,235,0.5)]">
-              TA
+              AWS
             </div>
             <div className="text-left">
-              <span className="text-xs font-bold text-slate-200 block">Test Account</span>
-              <span className="text-[10px] text-slate-400 block font-mono">Local Account</span>
+              <span className="text-xs font-bold text-slate-200 block font-mono">351405419700</span>
+              <span className="text-[10px] text-slate-400 block font-mono">AWS Account ID</span>
             </div>
           </div>
           <ChevronDown className="w-3.5 h-3.5 text-slate-400" />

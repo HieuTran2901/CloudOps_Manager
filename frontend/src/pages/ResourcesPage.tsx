@@ -1,6 +1,7 @@
 import React, { useEffect, useState } from 'react';
 import { cloudOpsApi } from '../api';
 import { InventorySummary, CloudResource } from '../types/api';
+import { useRegion } from '../context/RegionContext';
 import { LoadingSpinner } from '../components/feedback/LoadingSpinner';
 import { ErrorBanner } from '../components/feedback/ErrorBanner';
 import { EmptyState } from '../components/feedback/EmptyState';
@@ -9,6 +10,7 @@ import { ResourceDetailDrawer } from '../components/drawer/ResourceDetailDrawer'
 import { Search, Filter } from 'lucide-react';
 
 export const ResourcesPage: React.FC = () => {
+  const { currentRegion } = useRegion();
   const [summary, setSummary] = useState<InventorySummary | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -17,8 +19,10 @@ export const ResourcesPage: React.FC = () => {
   const [searchQuery, setSearchQuery] = useState<string>('');
 
   useEffect(() => {
+    setLoading(true);
+    setError(null);
     cloudOpsApi
-      .discoverResources()
+      .discoverResources(currentRegion)
       .then((data) => {
         setSummary(data);
         setLoading(false);
@@ -27,7 +31,7 @@ export const ResourcesPage: React.FC = () => {
         setError(err.message);
         setLoading(false);
       });
-  }, []);
+  }, [currentRegion]);
 
   const resources = summary?.resources || [];
   const resourceTypes = ['ALL', ...Array.from(new Set(resources.map((r) => r.resourceType)))];

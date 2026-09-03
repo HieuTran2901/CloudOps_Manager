@@ -24,9 +24,19 @@ import {
   EvidenceLifecycleRecord,
   OperationalResilienceEvaluation,
   VerificationScenarioResult,
+  DashboardSnapshot,
+  QuotaUtilizationReport,
+  ServiceQuotaItem,
+  RiskAssessmentReport,
+  ImpactAnalysisResult,
 } from '../types/api';
 
 export const cloudOpsApi = {
+  // Service Quotas & Capacity
+  getQuotas: (region?: string) =>
+    apiFetch<QuotaUtilizationReport>(`/quotas${region ? `?region=${region}` : ''}`),
+  getServiceQuotas: (serviceCode: string, region?: string) =>
+    apiFetch<ServiceQuotaItem[]>(`/quotas/${encodeURIComponent(serviceCode)}${region ? `?region=${region}` : ''}`),
   // STS / Identity
   getIdentity: () => apiFetch<CallerIdentity>('/sts/caller-identity'),
 
@@ -108,6 +118,12 @@ export const cloudOpsApi = {
     `/api/v1/aws/forensics/export?format=${format}${region ? `&region=${region}` : ''}`,
 
   // Operations & Health
+  getDashboardSnapshot: (region?: string) =>
+    apiFetch<DashboardSnapshot>(`/dashboard/snapshot${region ? `?region=${region}` : ''}`),
+  refreshDashboardSnapshot: (region?: string) =>
+    apiFetch<DashboardSnapshot>(`/dashboard/snapshot/refresh${region ? `?region=${region}` : ''}`, {
+      method: 'POST',
+    }),
   getDetailedHealth: () => apiFetch<DetailedHealthResponse>('/health'),
   getOperationalStatus: (region?: string) =>
     apiFetch<AwsOperationalStatus>(`/operations/status${region ? `?region=${region}` : ''}`),
@@ -144,4 +160,25 @@ export const cloudOpsApi = {
     return apiFetch<EvidenceLifecycleRecord[]>(`/operations/evidence?${params.toString()}`);
   },
   getVerificationScenarios: () => apiFetch<VerificationScenarioResult[]>('/operations/resilience/verification'),
+
+  // Phase 51: Operational Risk & Action Intelligence
+  getRisks: (region?: string, category?: string, severity?: string) => {
+    const params = new URLSearchParams();
+    if (region) params.append('region', region);
+    if (category) params.append('category', category);
+    if (severity) params.append('severity', severity);
+    const query = params.toString() ? `?${params.toString()}` : '';
+    return apiFetch<RiskAssessmentReport>(`/risks${query}`);
+  },
+
+  // Phase 53: Change Impact & Blast-Radius Intelligence
+  getImpactBlastRadius: (resourceType: string, resourceId: string, region?: string, accountId?: string, maxDepth: number = 3) => {
+    const params = new URLSearchParams();
+    params.append('resourceType', resourceType);
+    params.append('resourceId', resourceId);
+    if (region) params.append('region', region);
+    if (accountId) params.append('accountId', accountId);
+    if (maxDepth !== undefined) params.append('maxDepth', maxDepth.toString());
+    return apiFetch<ImpactAnalysisResult>(`/impact/blast-radius?${params.toString()}`);
+  },
 };

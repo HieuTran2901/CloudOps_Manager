@@ -2,10 +2,16 @@ import React, { useState } from 'react';
 import { TrendingUp, Box } from 'lucide-react';
 
 interface BottomTrendCardsProps {
+  monthlyCost?: number;
+  openFindingsCount?: number;
   onViewAllRisks?: () => void;
 }
 
-export const BottomTrendCards: React.FC<BottomTrendCardsProps> = ({ onViewAllRisks }) => {
+export const BottomTrendCards: React.FC<BottomTrendCardsProps> = ({
+  monthlyCost = 0,
+  openFindingsCount = 0,
+  onViewAllRisks,
+}) => {
   const [costPeriod, setCostPeriod] = useState('Last 30 Days');
   const [secPeriod, setSecPeriod] = useState('Last 7 Days');
 
@@ -28,10 +34,10 @@ export const BottomTrendCards: React.FC<BottomTrendCardsProps> = ({ onViewAllRis
         </div>
 
         <div className="mt-4 flex items-baseline space-x-3">
-          <span className="text-2xl font-black text-slate-100 font-mono tracking-tight">$12,845</span>
+          <span className="text-2xl font-black text-slate-100 font-mono tracking-tight">${monthlyCost.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span>
           <span className="text-emerald-400 text-xs font-semibold flex items-center">
             <TrendingUp className="w-3.5 h-3.5 mr-0.5" />
-            <span>8.2%</span>
+            <span>0.0%</span>
           </span>
         </div>
 
@@ -67,10 +73,10 @@ export const BottomTrendCards: React.FC<BottomTrendCardsProps> = ({ onViewAllRis
         </div>
 
         <div className="mt-4 flex items-baseline space-x-3">
-          <span className="text-2xl font-black text-slate-100 font-mono tracking-tight">23</span>
-          <span className="text-emerald-400 text-xs font-semibold flex items-center">
+          <span className="text-2xl font-black text-slate-100 font-mono tracking-tight">{openFindingsCount}</span>
+          <span className="text-rose-400 text-xs font-semibold flex items-center">
             <TrendingUp className="w-3.5 h-3.5 mr-0.5" />
-            <span>15%</span>
+            <span>Active Findings</span>
           </span>
         </div>
 
@@ -109,13 +115,15 @@ export const BottomTrendCards: React.FC<BottomTrendCardsProps> = ({ onViewAllRis
               <Box className="w-4 h-4" />
             </div>
             <div>
-              <h4 className="text-xs font-semibold text-slate-200">S3 Bucket Public Read</h4>
+              <h4 className="text-xs font-semibold text-slate-200">
+                {openFindingsCount > 0 ? 'Unrestricted Administrative Ingress' : 'No Critical Security Risks'}
+              </h4>
               <span className="inline-block mt-0.5 px-1.5 py-0.5 rounded text-[9px] font-bold uppercase tracking-wider bg-rose-950 text-rose-400 border border-rose-800">
-                High
+                {openFindingsCount > 0 ? 'High' : 'Healthy'}
               </span>
             </div>
           </div>
-          <span className="text-xs font-mono text-slate-400 font-medium">3 Resources</span>
+          <span className="text-xs font-mono text-slate-400 font-medium">{openFindingsCount} Findings</span>
         </div>
       </div>
     </div>
