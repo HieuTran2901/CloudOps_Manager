@@ -1,0 +1,36 @@
+{
+  "phase": "PHASE_47",
+  "timestamp": "2026-09-01T03:47:49Z",
+  "aws_account_id": "351405419700",
+  "region": "ap-southeast-2",
+  "cluster": "cloudops-prod",
+  "service": "cloudops-backend-service",
+  "task_definition": "arn:aws:ecs:ap-southeast-2:351405419700:task-definition/cloudops-backend:2",
+  "human_approval": {
+    "status": "APPROVED",
+    "approval_phrase": "YES, CREATE ECS BACKEND SERVICE"
+  },
+  "preflight_status": "PASS",
+  "mutation_attempted": {
+    "operation": "ecs:CreateService",
+    "exit_code": 1,
+    "aws_error_code": "AccessDeniedException",
+    "aws_error_message": "User: arn:aws:iam::351405419700:user/cloud-agent-antigravity is not authorized to perform: ecs:CreateService on resource: arn:aws:ecs:ap-southeast-2:351405419700:service/cloudops-prod/cloudops-backend-service because no identity-based policy allows the ecs:CreateService action"
+  },
+  "service_status": "NOT_FOUND",
+  "final_classification": "CREATE_SERVICE_PERMISSION_REQUIRED",
+  "mutation_audit": {
+    "ecs_service_created": 0,
+    "ecs_cluster_modified": 0,
+    "task_definition_modified": 0,
+    "iam_modified": 0,
+    "oidc_modified": 0,
+    "ecr_modified": 0,
+    "redis_modified": 0,
+    "secrets_modified": 0,
+    "vpc_modified": 0,
+    "security_groups_modified": 0,
+    "alb_created": 0,
+    "frontend_service_created": 0
+  }
+}
