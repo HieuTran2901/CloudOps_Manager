@@ -68,6 +68,10 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       image-tag: ${{ steps.set-image-tag.outputs.image_tag }}
+      backend-digest: ${{ steps.publish-backend.outputs.backend_digest }}
+      backend-image: ${{ steps.publish-backend.outputs.backend_image }}
+      frontend-digest: ${{ steps.publish-frontend.outputs.frontend_digest }}
+      frontend-image: ${{ steps.publish-frontend.outputs.frontend_image }}
     steps:
       - name: 1. Checkout Repository
         uses: actions/checkout@v4
@@ -87,27 +91,105 @@ jobs:
         run: |
           echo "image_tag=${{ github.sha }}" >> $GITHUB_OUTPUT
 
-      - name: 5. Build, Tag & Push Backend Image
+      - name: 5. Idempotent Build & Publish Backend Image
+        id: publish-backend
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          set -euo pipefail
           IMAGE_URI="$ECR_REGISTRY/$ECR_BACKEND_REPO"
-          docker build -t "$IMAGE_URI:$IMAGE_TAG" backend/
-          docker push "$IMAGE_URI:$IMAGE_TAG"
-          BACKEND_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE_URI:$IMAGE_TAG")
-          echo "BACKEND_DIGEST=$BACKEND_DIGEST" >> $GITHUB_ENV
+          echo "Checking if $ECR_BACKEND_REPO:$IMAGE_TAG already exists in ECR..."
 
-      - name: 6. Build, Tag & Push Frontend Image
+          set +e
+          DESCRIBE_OUT=$(aws ecr describe-images \
+            --repository-name "$ECR_BACKEND_REPO" \
+            --image-ids imageTag="$IMAGE_TAG" \
+            --region "$AWS_REGION" \
+            --query "imageDetails[0].imageDigest" \
+            --output text 2>&1)
+          DESCRIBE_EXIT=$?
+          set -e
+
+          if [ $DESCRIBE_EXIT -eq 0 ] && [[ "$DESCRIBE_OUT" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            BACKEND_DIGEST="$DESCRIBE_OUT"
+            echo "MATCH: Image $ECR_BACKEND_REPO:$IMAGE_TAG already exists in ECR with immutable digest $BACKEND_DIGEST."
+            echo "Reusing existing immutable image (skipping docker build & docker push)."
+          elif echo "$DESCRIBE_OUT" | grep -q "ImageNotFoundException"; then
+            echo "Image $ECR_BACKEND_REPO:$IMAGE_TAG does not exist in ECR. Building and publishing..."
+            docker build -t "$IMAGE_URI:$IMAGE_TAG" backend/
+            docker push "$IMAGE_URI:$IMAGE_TAG"
+
+            BACKEND_DIGEST=$(aws ecr describe-images \
+              --repository-name "$ECR_BACKEND_REPO" \
+              --image-ids imageTag="$IMAGE_TAG" \
+              --region "$AWS_REGION" \
+              --query "imageDetails[0].imageDigest" \
+              --output text)
+            if [[ ! "$BACKEND_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+              echo "ERROR: Failed to resolve valid digest for newly published image $ECR_BACKEND_REPO:$IMAGE_TAG."
+              exit 1
+            fi
+            echo "Successfully published $ECR_BACKEND_REPO:$IMAGE_TAG with digest $BACKEND_DIGEST."
+          else
+            echo "ERROR: Unexpected AWS ECR error querying $ECR_BACKEND_REPO:$IMAGE_TAG:"
+            echo "$DESCRIBE_OUT"
+            exit 1
+          fi
+
+          echo "BACKEND_DIGEST=$BACKEND_DIGEST" >> $GITHUB_ENV
+          echo "backend_digest=$BACKEND_DIGEST" >> $GITHUB_OUTPUT
+          echo "backend_image=$IMAGE_URI@$BACKEND_DIGEST" >> $GITHUB_OUTPUT
+
+      - name: 6. Idempotent Build & Publish Frontend Image
+        id: publish-frontend
         env:
           ECR_REGISTRY: ${{ steps.login-ecr.outputs.registry }}
           IMAGE_TAG: ${{ github.sha }}
         run: |
+          set -euo pipefail
           IMAGE_URI="$ECR_REGISTRY/$ECR_FRONTEND_REPO"
-          docker build -t "$IMAGE_URI:$IMAGE_TAG" frontend/
-          docker push "$IMAGE_URI:$IMAGE_TAG"
-          FRONTEND_DIGEST=$(docker inspect --format='{{index .RepoDigests 0}}' "$IMAGE_URI:$IMAGE_TAG")
+          echo "Checking if $ECR_FRONTEND_REPO:$IMAGE_TAG already exists in ECR..."
+
+          set +e
+          DESCRIBE_OUT=$(aws ecr describe-images \
+            --repository-name "$ECR_FRONTEND_REPO" \
+            --image-ids imageTag="$IMAGE_TAG" \
+            --region "$AWS_REGION" \
+            --query "imageDetails[0].imageDigest" \
+            --output text 2>&1)
+          DESCRIBE_EXIT=$?
+          set -e
+
+          if [ $DESCRIBE_EXIT -eq 0 ] && [[ "$DESCRIBE_OUT" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+            FRONTEND_DIGEST="$DESCRIBE_OUT"
+            echo "MATCH: Image $ECR_FRONTEND_REPO:$IMAGE_TAG already exists in ECR with immutable digest $FRONTEND_DIGEST."
+            echo "Reusing existing immutable image (skipping docker build & docker push)."
+          elif echo "$DESCRIBE_OUT" | grep -q "ImageNotFoundException"; then
+            echo "Image $ECR_FRONTEND_REPO:$IMAGE_TAG does not exist in ECR. Building and publishing..."
+            docker build -t "$IMAGE_URI:$IMAGE_TAG" frontend/
+            docker push "$IMAGE_URI:$IMAGE_TAG"
+
+            FRONTEND_DIGEST=$(aws ecr describe-images \
+              --repository-name "$ECR_FRONTEND_REPO" \
+              --image-ids imageTag="$IMAGE_TAG" \
+              --region "$AWS_REGION" \
+              --query "imageDetails[0].imageDigest" \
+              --output text)
+            if [[ ! "$FRONTEND_DIGEST" =~ ^sha256:[a-f0-9]{64}$ ]]; then
+              echo "ERROR: Failed to resolve valid digest for newly published image $ECR_FRONTEND_REPO:$IMAGE_TAG."
+              exit 1
+            fi
+            echo "Successfully published $ECR_FRONTEND_REPO:$IMAGE_TAG with digest $FRONTEND_DIGEST."
+          else
+            echo "ERROR: Unexpected AWS ECR error querying $ECR_FRONTEND_REPO:$IMAGE_TAG:"
+            echo "$DESCRIBE_OUT"
+            exit 1
+          fi
+
           echo "FRONTEND_DIGEST=$FRONTEND_DIGEST" >> $GITHUB_ENV
+          echo "frontend_digest=$FRONTEND_DIGEST" >> $GITHUB_OUTPUT
+          echo "frontend_image=$IMAGE_URI@$FRONTEND_DIGEST" >> $GITHUB_OUTPUT
 
   # Stage 10-14: ECS Deployment, Health Verification & Release Gate
   ecs-deployment:
@@ -134,7 +216,7 @@ jobs:
         with:
           task-definition: infrastructure/ecs/cloudops-backend-task.json
           container-name: cloudops-backend
-          image: ${{ steps.login-ecr.outputs.registry }}/cloudops/backend:${{ needs.container-publish.outputs.image-tag }}
+          image: ${{ needs.container-publish.outputs.backend-image }}
 
       - name: 5. Deploy ECS Task Definition to Backend Service
         uses: aws-actions/amazon-ecs-deploy-task-definition@v2
